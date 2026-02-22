@@ -65,8 +65,15 @@ export class WalletService {
             balance: string;
         }>
     > {
+        const query: any = {};
+        if (userId === "system") {
+            query.type = WalletType.SYSTEM;
+        } else {
+            query.userId = userId;
+        }
+
         const wallets = await AppDataSource.getRepository(Wallet).find({
-            where: { userId },
+            where: query,
             relations: ["assetType"],
         });
 
@@ -99,9 +106,16 @@ export class WalletService {
         page: number;
         limit: number;
     }> {
-        // First find the user's wallet IDs
+        // First find the wallet IDs
+        const query: any = {};
+        if (userId === "system") {
+            query.type = WalletType.SYSTEM;
+        } else {
+            query.userId = userId;
+        }
+
         const wallets = await AppDataSource.getRepository(Wallet).find({
-            where: { userId },
+            where: query,
             select: ["id"],
         });
 

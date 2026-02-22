@@ -224,6 +224,8 @@ Get all wallet balances for a user.
 GET /api/wallets/:userId/balance
 ```
 
+> **Pro Tip:** Use `system` as the `:userId` to check all system wallet balances.
+
 **Success Response (200):**
 ```json
 [
@@ -260,6 +262,8 @@ Get paginated transaction history for a user.
 ```
 GET /api/wallets/:userId/transactions?page=1&limit=10
 ```
+
+> **Pro Tip:** Use `system` as the `:userId` to view the comprehensive audit trail for the entire system.
 
 **Query Parameters:**
 | Param | Default | Description |
