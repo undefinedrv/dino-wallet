@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
+import * as path from "path";
 import { AssetType } from "../entities/AssetType";
 import { Wallet } from "../entities/Wallet";
 import { Transaction } from "../entities/Transaction";
@@ -12,7 +13,7 @@ export const AppDataSource = new DataSource({
     type: "postgres",
     url: process.env.DATABASE_URL,
     entities: [AssetType, Wallet, Transaction, LedgerEntry],
-    migrations: ["src/migrations/*.ts"],
+    migrations: [path.join(__dirname, "../migrations/*.{ts,js}")],
     synchronize: false,
     logging: process.env.NODE_ENV === "development",
 });

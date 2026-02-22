@@ -32,7 +32,7 @@ AppDataSource.initialize()
             console.log(`🚀 Wallet service running on port ${PORT}`);
         });
     })
-    .catch((error) => {
+    .catch((error: any) => {
         console.error("❌ Database connection failed:", error);
         process.exit(1);
     });

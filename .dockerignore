@@ -1,4 +1,4 @@
-cnode_modules
+node_modules
 dist
 .git
 .gitignore

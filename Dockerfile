@@ -16,18 +16,15 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+# Setting NODE_ENV to production optimizes many libraries
+ENV NODE_ENV=production
+
 COPY package.json package-lock.json* ./
+# Install only production dependencies
 RUN npm install --omit=dev
 
-# Copy compiled JS
+# Copy compiled JS only
 COPY --from=builder /app/dist ./dist
-
-# Copy source for migrations and seed (ts-node needs them)
-COPY tsconfig.json ./
-COPY src ./src
-
-# Install ts-node and typescript for running migrations
-RUN npm install ts-node typescript tsconfig-paths
 
 # Copy entrypoint
 COPY docker-entrypoint.sh ./

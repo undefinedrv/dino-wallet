@@ -2,12 +2,10 @@
 set -e
 
 echo "⏳ Running migrations..."
-npx ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/config/database.ts
-echo "✅ Migrations complete."
+# In production, we run the compiled JS migrations using the regular node command
+node ./node_modules/typeorm/cli.js migration:run -d dist/config/database.js
 
-echo "🌱 Running seed..."
-npx ts-node src/seed.ts
-echo "✅ Seed complete."
+echo "✅ Migrations complete."
 
 echo "🚀 Starting server..."
 exec node dist/app.js

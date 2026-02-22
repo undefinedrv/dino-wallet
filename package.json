@@ -14,7 +14,7 @@
     "seed": "ts-node src/seed.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "if [ -d .git ]; then husky; fi"
   },
   "lint-staged": {
     "*.ts": [
