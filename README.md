@@ -1,3 +1,7 @@
+# 🦕 Dino Wallet — Virtual Wallet Microservice
+
+A production-grade virtual wallet microservice implementing a **double-entry ledger** system with **pessimistic locking**, **idempotent transactions**, and **deadlock prevention**. Supports multiple asset types (Gold Coins, Diamonds, Loyalty Points) with TOPUP, BONUS, and SPEND transaction flows.
+
 Built with Node.js, TypeScript, Express.js, PostgreSQL, TypeORM, and Docker.
 
 ---
@@ -12,7 +16,7 @@ Built with Node.js, TypeScript, Express.js, PostgreSQL, TypeORM, and Docker.
 
 - **Hosting**: Railway
 - **Database**: Neon PGSQL (Serverless Postgres)
-- **DNS/Networking**: Cloudflare DNS
+- **Networking**: Cloudflare DNS
 
 ---
 
