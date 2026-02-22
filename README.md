@@ -1,8 +1,18 @@
-# 🦕 Dino Wallet — Virtual Wallet Microservice
-
-A production-grade virtual wallet microservice implementing a **double-entry ledger** system with **pessimistic locking**, **idempotent transactions**, and **deadlock prevention**. Supports multiple asset types (Gold Coins, Diamonds, Loyalty Points) with TOPUP, BONUS, and SPEND transaction flows.
-
 Built with Node.js, TypeScript, Express.js, PostgreSQL, TypeORM, and Docker.
+
+---
+
+### 🔗 Project Links
+
+- **GitHub Repository**: [undefinedrv/dino-wallet](https://github.com/undefinedrv/dino-wallet)
+- **Live Health Endpoint**: [dino-wallet.opshot.in/health](https://dino-wallet.opshot.in/health)
+- **Postman Collection**: [View Collection](https://workmail-raghav-8993072.postman.co/workspace/Raghav-Bhati's-Workspace~c556ba2a-37ea-4e03-8474-642c538ec0a4/collection/52602666-331a9bc8-0e84-4ff5-9c32-e7deb6485e8c?action=share&creator=52602666)
+
+### 🚀 Deployment
+
+- **Hosting**: Railway
+- **Database**: Neon PGSQL (Serverless Postgres)
+- **DNS/Networking**: Cloudflare DNS
 
 ---
 
@@ -103,8 +113,6 @@ cp .env.example .env
 # Run migrations
 npm run migration:run
 
-# Seed the database
-npm run seed
 
 # Start the dev server
 npm run dev
@@ -140,11 +148,6 @@ GET /health
 { "status": "ok", "timestamp": "2026-02-22T14:00:00.000Z" }
 ```
 
-**curl:**
-```bash
-curl http://localhost:3000/health
-```
-
 ---
 
 ### Top Up
@@ -158,67 +161,13 @@ POST /api/wallets/topup
 **Request Body:**
 ```json
 {
-  "userId": "user-1",
-  "assetTypeId": "a0000000-0000-0000-0000-000000000001",
+  "userId": "1",
+  "assetTypeId": "1",
   "amount": 500,
   "idempotencyKey": "topup-user1-gc-001",
   "description": "Top up via payment gateway"
 }
 ```
-
-**Success Response (200):**
-```json
-{
-  "id": "txn-uuid",
-  "idempotencyKey": "topup-user1-gc-001",
-  "type": "TOPUP",
-  "status": "SUCCESS",
-  "amount": "500",
-  "debitWalletId": "w0000000-0000-0000-0000-000000000001",
-  "creditWalletId": "w0000000-0000-0000-0000-000000000011",
-  "description": "Top up via payment gateway",
-  "createdAt": "2026-02-22T14:00:00.000Z",
-  "ledgerEntries": [
-    {
-      "id": "entry-uuid-1",
-      "transactionId": "txn-uuid",
-      "walletId": "w0000000-0000-0000-0000-000000000001",
-      "entryType": "DEBIT",
-      "amount": "500",
-      "balanceAfter": "500",
-      "createdAt": "2026-02-22T14:00:00.000Z"
-    },
-    {
-      "id": "entry-uuid-2",
-      "transactionId": "txn-uuid",
-      "walletId": "w0000000-0000-0000-0000-000000000011",
-      "entryType": "CREDIT",
-      "amount": "500",
-      "balanceAfter": "1500",
-      "createdAt": "2026-02-22T14:00:00.000Z"
-    }
-  ]
-}
-```
-
-**Error Response (400):**
-```json
-{ "error": "Missing required fields: userId, assetTypeId, amount, idempotencyKey", "code": "VALIDATION" }
-```
-
-**curl:**
-```bash
-curl -X POST http://localhost:3000/api/wallets/topup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user-1",
-    "assetTypeId": "a0000000-0000-0000-0000-000000000001",
-    "amount": 500,
-    "idempotencyKey": "topup-user1-gc-001",
-    "description": "Top up via payment gateway"
-  }'
-```
-
 ---
 
 ### Bonus
@@ -226,52 +175,18 @@ curl -X POST http://localhost:3000/api/wallets/topup \
 Give free credits from the system to a user.
 
 ```
-POST /api/wallets/bonus
+POST /api/wallets/bonus?userType=system
 ```
 
 **Request Body:**
 ```json
 {
-  "userId": "user-1",
-  "assetTypeId": "a0000000-0000-0000-0000-000000000001",
+  "userId": "1", // targeted user 
+  "assetTypeId": "3", //loyalty points
   "amount": 100,
   "idempotencyKey": "bonus-user1-gc-001",
   "description": "Welcome bonus"
 }
-```
-
-**Success Response (200):**
-```json
-{
-  "id": "txn-uuid",
-  "idempotencyKey": "bonus-user1-gc-001",
-  "type": "BONUS",
-  "status": "SUCCESS",
-  "amount": "100",
-  "debitWalletId": "w0000000-0000-0000-0000-000000000001",
-  "creditWalletId": "w0000000-0000-0000-0000-000000000011",
-  "description": "Welcome bonus",
-  "createdAt": "2026-02-22T14:00:00.000Z",
-  "ledgerEntries": [...]
-}
-```
-
-**Error Response (422 — insufficient system balance):**
-```json
-{ "error": "System wallet has insufficient balance for bonus", "code": "INSUFFICIENT_SYSTEM_BALANCE" }
-```
-
-**curl:**
-```bash
-curl -X POST http://localhost:3000/api/wallets/bonus \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user-1",
-    "assetTypeId": "a0000000-0000-0000-0000-000000000001",
-    "amount": 100,
-    "idempotencyKey": "bonus-user1-gc-001",
-    "description": "Welcome bonus"
-  }'
 ```
 
 ---
@@ -287,46 +202,12 @@ POST /api/wallets/spend
 **Request Body:**
 ```json
 {
-  "userId": "user-1",
-  "assetTypeId": "a0000000-0000-0000-0000-000000000001",
+  "userId": "1",
+  "assetTypeId": "2", // deduted from diamonds
   "amount": 200,
   "idempotencyKey": "spend-user1-gc-001",
   "description": "Purchased power-up"
 }
-```
-
-**Success Response (200):**
-```json
-{
-  "id": "txn-uuid",
-  "idempotencyKey": "spend-user1-gc-001",
-  "type": "SPEND",
-  "status": "SUCCESS",
-  "amount": "200",
-  "debitWalletId": "w0000000-0000-0000-0000-000000000011",
-  "creditWalletId": "w0000000-0000-0000-0000-000000000001",
-  "description": "Purchased power-up",
-  "createdAt": "2026-02-22T14:00:00.000Z",
-  "ledgerEntries": [...]
-}
-```
-
-**Error Response (422 — insufficient balance):**
-```json
-{ "error": "Insufficient balance", "code": "INSUFFICIENT_BALANCE" }
-```
-
-**curl:**
-```bash
-curl -X POST http://localhost:3000/api/wallets/spend \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user-1",
-    "assetTypeId": "a0000000-0000-0000-0000-000000000001",
-    "amount": 200,
-    "idempotencyKey": "spend-user1-gc-001",
-    "description": "Purchased power-up"
-  }'
 ```
 
 ---
@@ -343,32 +224,27 @@ GET /api/wallets/:userId/balance
 ```json
 [
   {
-    "walletId": "w0000000-0000-0000-0000-000000000011",
-    "name": "Alice Gold Coins",
+    "walletId": "1",
+    "name": "Raghav Gold Coins",
     "assetType": "Gold Coins",
     "symbol": "GC",
     "balance": "1000"
   },
   {
-    "walletId": "w0000000-0000-0000-0000-000000000012",
-    "name": "Alice Diamonds",
+    "walletId": "2",
+    "name": "Raghav Diamonds",
     "assetType": "Diamonds",
-    "symbol": "DIA",
+    "symbol": "DC",
     "balance": "500"
   },
   {
-    "walletId": "w0000000-0000-0000-0000-000000000013",
-    "name": "Alice Loyalty Points",
+    "walletId": "3",
+    "name": "Raghav Loyalty Points",
     "assetType": "Loyalty Points",
     "symbol": "LP",
     "balance": "2000"
   }
 ]
-```
-
-**curl:**
-```bash
-curl http://localhost:3000/api/wallets/user-1/balance
 ```
 
 ---
@@ -386,34 +262,6 @@ GET /api/wallets/:userId/transactions?page=1&limit=10
 |---|---|---|
 | `page` | 1 | Page number |
 | `limit` | 10 | Items per page |
-
-**Success Response (200):**
-```json
-{
-  "data": [
-    {
-      "id": "txn-uuid",
-      "idempotencyKey": "topup-user1-gc-001",
-      "type": "TOPUP",
-      "status": "SUCCESS",
-      "amount": "500",
-      "debitWalletId": "...",
-      "creditWalletId": "...",
-      "description": "Top up via payment gateway",
-      "createdAt": "2026-02-22T14:00:00.000Z",
-      "ledgerEntries": [...]
-    }
-  ],
-  "total": 1,
-  "page": 1,
-  "limit": 10
-}
-```
-
-**curl:**
-```bash
-curl "http://localhost:3000/api/wallets/user-1/transactions?page=1&limit=10"
-```
 
 ---
 
@@ -490,71 +338,11 @@ Every transaction in the system creates exactly **2 ledger entries**:
 
 ---
 
-## 📁 Project Structure
-
-```
-wallet-service/
-├── src/
-│   ├── config/
-│   │   └── database.ts          # TypeORM DataSource configuration
-│   ├── entities/
-│   │   ├── AssetType.ts         # Asset type entity (Gold Coins, Diamonds, etc.)
-│   │   ├── Wallet.ts            # Wallet entity (user & system wallets)
-│   │   ├── Transaction.ts       # Transaction entity (TOPUP, BONUS, SPEND)
-│   │   └── LedgerEntry.ts       # Ledger entry entity (DEBIT, CREDIT)
-│   ├── services/
-│   │   └── wallet.service.ts    # Core business logic with locking & ledger
-│   ├── controllers/
-│   │   └── wallet.controller.ts # Request validation & response formatting
-│   ├── routes/
-│   │   └── wallet.routes.ts     # Express route definitions
-│   ├── middlewares/
-│   │   └── errorHandler.ts      # Global error handler
-│   ├── migrations/
-│   │   └── 1708000000000-InitialSchemaAndSeed.ts  # Schema + seed data
-│   ├── seed.ts                  # Standalone seed script
-│   └── app.ts                   # Express app entry point
-├── seed.sql                     # Raw SQL seed (identical to seed.ts)
-├── Dockerfile                   # Multi-stage Docker build
-├── docker-compose.yml           # Full stack: PostgreSQL + API
-├── docker-entrypoint.sh         # Runs migrations → seed → server
-├── .env.example                 # Environment variable template
-├── nodemon.json                 # Dev server config
-├── tsconfig.json                # TypeScript configuration
-├── package.json                 # Dependencies & scripts
-└── README.md                    # This file
-```
-
----
-
 ## 🧪 Seeded Demo Data
 
 | Entity | Details |
 |---|---|
-| **Asset Types** | Gold Coins (GC), Diamonds (DIA), Loyalty Points (LP) |
-| **System Wallets** | 3 wallets (one per asset type), balance = 0 |
-| **Alice (user-1)** | GC: 1000, DIA: 500, LP: 2000 |
-| **Bob (user-2)** | GC: 500, DIA: 100, LP: 800 |
-
-### Quick Test After Starting
-
-```bash
-# Check Alice's balance
-curl http://localhost:3000/api/wallets/user-1/balance
-
-# Top up Alice with 500 Gold Coins
-curl -X POST http://localhost:3000/api/wallets/topup \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"user-1","assetTypeId":"a0000000-0000-0000-0000-000000000001","amount":500,"idempotencyKey":"test-topup-001"}'
-
-# Alice spends 200 Gold Coins
-curl -X POST http://localhost:3000/api/wallets/spend \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"user-1","assetTypeId":"a0000000-0000-0000-0000-000000000001","amount":200,"idempotencyKey":"test-spend-001"}'
-
-# Check Alice's updated balance
-curl http://localhost:3000/api/wallets/user-1/balance
-
-# View Alice's transaction history
-curl "http://localhost:3000/api/wallets/user-1/transactions?page=1&limit=10"
-```
+| **Asset Types** | Gold Coins (GC), Diamonds Coins (DC), Loyalty Points (LP) |
+| **System Wallets** | 3 system wallets (one per asset type), balance = 0 |
+| **Raghav (user-1)** | GC: 1000, DIA: 1000, LP: 0 |
+| **Bhati (user-2)** | GC: 500, DIA: 500, LP: 0 |

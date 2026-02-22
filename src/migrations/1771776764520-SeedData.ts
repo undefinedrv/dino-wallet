@@ -59,7 +59,7 @@ export class SeedData1771776764520 implements MigrationInterface {
     public async down(queryRunner: QueryRunner): Promise<void> {
         // Remove the seeded data in reverse order
         await queryRunner.query(
-            `DELETE FROM "wallets" WHERE "id" IN (101, 102, 103, 211, 212, 213, 221, 222, 223);`
+            `DELETE FROM "wallets" WHERE "id" IN (1, 2, 3, 4, 5, 6, 7, 8, 9);`
         );
         await queryRunner.query(
             `DELETE FROM "asset_types" WHERE "id" IN (1, 2, 3);`

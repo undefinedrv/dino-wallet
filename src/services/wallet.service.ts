@@ -144,169 +144,156 @@ export class WalletService {
             // ── Step 2: Find wallets ──
             const userWallet = await manager.findOne(Wallet, {
                 where: { userId, assetTypeId },
+                relations: ["assetType"],
             });
             if (!userWallet) {
                 throw new AppError(
-                    `User wallet not found for userId=${userId}, assetTypeId=${assetTypeId}`,
+                    `Wallet not found for userId=${userId}, assetTypeId=${assetTypeId}`,
                     "NOT_FOUND"
                 );
             }
 
-            const systemWallet = await manager.findOne(Wallet, {
-                where: { type: WalletType.SYSTEM, assetTypeId },
-            });
-            if (!systemWallet) {
-                throw new AppError(
-                    `System wallet not found for assetTypeId=${assetTypeId}`,
-                    "NOT_FOUND"
-                );
+            // System wallet only needed for BONUS and SPEND
+            let systemWallet: Wallet | null = null;
+            if (
+                type === TransactionType.BONUS ||
+                type === TransactionType.SPEND
+            ) {
+                systemWallet = await manager.findOne(Wallet, {
+                    where: { type: WalletType.SYSTEM, assetTypeId },
+                });
+                if (!systemWallet) {
+                    throw new AppError(
+                        `System wallet not found for assetTypeId=${assetTypeId}`,
+                        "NOT_FOUND"
+                    );
+                }
             }
 
-            // ── Step 3: Lock wallets (DEADLOCK PREVENTION) ──
-            // Sort wallet IDs alphabetically and lock in that order
-            const sortedIds = [userWallet.id, systemWallet.id].sort();
+            // ── Step 3: Lock wallets (sorted order) ──
+            const walletsToLock = [userWallet];
+            if (systemWallet) walletsToLock.push(systemWallet);
 
+            const sortedIds = walletsToLock.map((w) => w.id).sort();
             const lockedWallets: Record<string, Wallet> = {};
+
             for (const id of sortedIds) {
                 const locked = await manager
                     .createQueryBuilder(Wallet, "wallet")
                     .setLock("pessimistic_write")
                     .where("wallet.id = :id", { id })
                     .getOne();
-                if (!locked) {
-                    throw new AppError(
-                        `Wallet ${id} not found during lock`,
-                        "NOT_FOUND"
-                    );
-                }
+                if (!locked) throw new AppError(`Lock failed`, "NOT_FOUND");
                 lockedWallets[id] = locked;
             }
 
-            // Re-assign from locked versions (with up-to-date balances)
             const lockedUserWallet = lockedWallets[userWallet.id];
-            const lockedSystemWallet = lockedWallets[systemWallet.id];
+            const lockedSystemWallet = systemWallet
+                ? lockedWallets[systemWallet.id]
+                : null;
 
-            // ── Step 4: Balance check ──
-            let debitWallet: Wallet;
-            let creditWallet: Wallet;
+            // ── Step 4 & 5: Logic depending on type ──
+            let debitWalletId: string | null = null;
+            let creditWalletId: string | null = null;
 
             switch (type) {
                 case TransactionType.TOPUP:
-                    // System wallet is debit (balance increases), User wallet is credit (balance increases)
-                    debitWallet = lockedSystemWallet;
-                    creditWallet = lockedUserWallet;
-                    // No balance check — new money is entering the system
+                    // Only User (Credit) -- System not involved
+                    lockedUserWallet.balance = (
+                        BigInt(lockedUserWallet.balance) + BigInt(amount)
+                    ).toString();
+                    creditWalletId = lockedUserWallet.id;
                     break;
 
                 case TransactionType.BONUS:
-                    // System wallet is debit (balance decreases), User wallet is credit (balance increases)
-                    debitWallet = lockedSystemWallet;
-                    creditWallet = lockedUserWallet;
-                    if (BigInt(lockedSystemWallet.balance) < BigInt(amount)) {
-                        throw new AppError(
-                            "System wallet has insufficient balance for bonus",
-                            "INSUFFICIENT_SYSTEM_BALANCE"
-                        );
+                    // BONUS: System (Debit) -> User (Credit)
+                    // System CAN go negative for bonus
+                    if (lockedSystemWallet) {
+                        lockedSystemWallet.balance = (
+                            BigInt(lockedSystemWallet.balance) - BigInt(amount)
+                        ).toString();
+                        debitWalletId = lockedSystemWallet.id;
                     }
+                    lockedUserWallet.balance = (
+                        BigInt(lockedUserWallet.balance) + BigInt(amount)
+                    ).toString();
+                    creditWalletId = lockedUserWallet.id;
                     break;
 
                 case TransactionType.SPEND:
-                    // User wallet is debit (balance decreases), System wallet is credit (balance increases)
-                    debitWallet = lockedUserWallet;
-                    creditWallet = lockedSystemWallet;
+                    // SPEND: User (Debit) -> System (Credit)
+                    // User CANNOT go negative
                     if (BigInt(lockedUserWallet.balance) < BigInt(amount)) {
                         throw new AppError(
                             "Insufficient balance",
                             "INSUFFICIENT_BALANCE"
                         );
                     }
-                    break;
-
-                default:
-                    throw new AppError(
-                        `Unknown transaction type: ${type}`,
-                        "VALIDATION"
-                    );
-            }
-
-            // ── Step 5: Update balances ──
-            switch (type) {
-                case TransactionType.TOPUP:
-                    // Both go UP — new credits entering the system
-                    lockedSystemWallet.balance = (
-                        BigInt(lockedSystemWallet.balance) + BigInt(amount)
-                    ).toString();
-                    lockedUserWallet.balance = (
-                        BigInt(lockedUserWallet.balance) + BigInt(amount)
-                    ).toString();
-                    break;
-
-                case TransactionType.BONUS:
-                    // System goes DOWN, User goes UP
-                    lockedSystemWallet.balance = (
-                        BigInt(lockedSystemWallet.balance) - BigInt(amount)
-                    ).toString();
-                    lockedUserWallet.balance = (
-                        BigInt(lockedUserWallet.balance) + BigInt(amount)
-                    ).toString();
-                    break;
-
-                case TransactionType.SPEND:
-                    // User goes DOWN, System goes UP
                     lockedUserWallet.balance = (
                         BigInt(lockedUserWallet.balance) - BigInt(amount)
                     ).toString();
-                    lockedSystemWallet.balance = (
-                        BigInt(lockedSystemWallet.balance) + BigInt(amount)
-                    ).toString();
+                    debitWalletId = lockedUserWallet.id;
+
+                    if (lockedSystemWallet) {
+                        lockedSystemWallet.balance = (
+                            BigInt(lockedSystemWallet.balance) + BigInt(amount)
+                        ).toString();
+                        creditWalletId = lockedSystemWallet.id;
+                    }
                     break;
             }
 
+            // Save updated balances
             await manager.save(Wallet, lockedUserWallet);
-            await manager.save(Wallet, lockedSystemWallet);
+            if (lockedSystemWallet)
+                await manager.save(Wallet, lockedSystemWallet);
 
-            // ── Step 6: Create transaction record ──
+            // ── Step 6: Create Transaction record ──
             const transaction = manager.create(Transaction, {
                 idempotencyKey,
                 type,
                 status: TransactionStatus.SUCCESS,
                 amount: amount.toString(),
-                debitWalletId: debitWallet.id,
-                creditWalletId: creditWallet.id,
-                description: description || null,
+                debitWalletId,
+                creditWalletId,
+                description,
             });
             const savedTx = await manager.save(Transaction, transaction);
 
-            // ── Step 7: Create 2 ledger entries ──
-            const debitEntry = manager.create(LedgerEntry, {
-                transactionId: savedTx.id,
-                walletId: debitWallet.id,
-                entryType: EntryType.DEBIT,
-                amount: amount.toString(),
-                balanceAfter:
-                    debitWallet.id === lockedUserWallet.id
-                        ? lockedUserWallet.balance
-                        : lockedSystemWallet.balance,
-            });
+            // ── Step 7: Create Ledger entries ──
+            const entries: LedgerEntry[] = [];
 
-            const creditEntry = manager.create(LedgerEntry, {
-                transactionId: savedTx.id,
-                walletId: creditWallet.id,
-                entryType: EntryType.CREDIT,
-                amount: amount.toString(),
-                balanceAfter:
-                    creditWallet.id === lockedUserWallet.id
-                        ? lockedUserWallet.balance
-                        : lockedSystemWallet.balance,
-            });
+            // User Entry
+            entries.push(
+                manager.create(LedgerEntry, {
+                    transactionId: savedTx.id,
+                    walletId: lockedUserWallet.id,
+                    entryType:
+                        type === TransactionType.SPEND
+                            ? EntryType.DEBIT
+                            : EntryType.CREDIT,
+                    amount: amount.toString(),
+                    balanceAfter: lockedUserWallet.balance,
+                })
+            );
 
-            const savedEntries = await manager.save(LedgerEntry, [
-                debitEntry,
-                creditEntry,
-            ]);
+            // System Entry (only for BONUS and SPEND)
+            if (lockedSystemWallet) {
+                entries.push(
+                    manager.create(LedgerEntry, {
+                        transactionId: savedTx.id,
+                        walletId: lockedSystemWallet.id,
+                        entryType:
+                            type === TransactionType.BONUS
+                                ? EntryType.DEBIT
+                                : EntryType.CREDIT,
+                        amount: amount.toString(),
+                        balanceAfter: lockedSystemWallet.balance,
+                    })
+                );
+            }
 
-            // ── Step 8: Return the full transaction with ledger entries ──
-            savedTx.ledgerEntries = savedEntries;
+            savedTx.ledgerEntries = await manager.save(LedgerEntry, entries);
             return savedTx;
         });
     }

@@ -36,19 +36,19 @@ export class Transaction extends Base {
     @Column({ type: "bigint" })
     amount: string;
 
-    @Column({ type: "bigint" })
-    debitWalletId: string;
+    @Column({ type: "bigint", nullable: true })
+    debitWalletId: string | null;
 
-    @ManyToOne(() => Wallet, { eager: false })
+    @ManyToOne(() => Wallet, { eager: false, nullable: true })
     @JoinColumn({ name: "debitWalletId" })
-    debitWallet: Wallet;
+    debitWallet: Wallet | null;
 
-    @Column({ type: "bigint" })
-    creditWalletId: string;
+    @Column({ type: "bigint", nullable: true })
+    creditWalletId: string | null;
 
-    @ManyToOne(() => Wallet, { eager: false })
+    @ManyToOne(() => Wallet, { eager: false, nullable: true })
     @JoinColumn({ name: "creditWalletId" })
-    creditWallet: Wallet;
+    creditWallet: Wallet | null;
 
     @Column({ type: "varchar", nullable: true })
     description: string | null;

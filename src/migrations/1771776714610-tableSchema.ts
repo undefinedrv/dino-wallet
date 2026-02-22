@@ -29,7 +29,7 @@ export class TableSchema1771776714610 implements MigrationInterface {
             `CREATE TYPE "public"."transactions_status_enum" AS ENUM('PENDING', 'SUCCESS', 'FAILED')`
         );
         await queryRunner.query(
-            `CREATE TABLE "transactions" ("id" BIGSERIAL NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "idempotencyKey" character varying NOT NULL, "type" "public"."transactions_type_enum" NOT NULL, "status" "public"."transactions_status_enum" NOT NULL DEFAULT 'PENDING', "amount" bigint NOT NULL, "debitWalletId" bigint NOT NULL, "creditWalletId" bigint NOT NULL, "description" character varying, CONSTRAINT "UQ_86238dd0ae2d79be941104a5842" UNIQUE ("idempotencyKey"), CONSTRAINT "PK_a219afd8dd77ed80f5a862f1db9" PRIMARY KEY ("id"))`
+            `CREATE TABLE "transactions" ("id" BIGSERIAL NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "idempotencyKey" character varying NOT NULL, "type" "public"."transactions_type_enum" NOT NULL, "status" "public"."transactions_status_enum" NOT NULL DEFAULT 'PENDING', "amount" bigint NOT NULL, "debitWalletId" bigint, "creditWalletId" bigint, "description" character varying, CONSTRAINT "UQ_86238dd0ae2d79be941104a5842" UNIQUE ("idempotencyKey"), CONSTRAINT "PK_a219afd8dd77ed80f5a862f1db9" PRIMARY KEY ("id"))`
         );
         await queryRunner.query(
             `ALTER TABLE "wallets" ADD CONSTRAINT "FK_b19197e46d82d264902ca82cd8e" FOREIGN KEY ("assetTypeId") REFERENCES "asset_types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`

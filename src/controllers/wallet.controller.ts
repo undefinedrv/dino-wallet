@@ -52,11 +52,31 @@ export class WalletController {
         try {
             const { userId, assetTypeId, amount, idempotencyKey, description } =
                 req.body;
+            const { userType } = req.query;
 
-            // Validation
+            // 1. Check userType query param
+            if (userType !== "system") {
+                res.status(403).json({
+                    error: "Only system can grant bonus",
+                    code: "UNAUTHORIZED",
+                });
+                return;
+            }
+
+            // 2. Missing fields check
             if (!userId || !assetTypeId || !amount || !idempotencyKey) {
                 res.status(400).json({
                     error: "Missing required fields: userId, assetTypeId, amount, idempotencyKey",
+                    code: "VALIDATION",
+                });
+                return;
+            }
+
+            // 3. AssetType restriction (only 3 is allowed for Bonus)
+            // assetTypeId is a string in the body
+            if (assetTypeId.toString() !== "3") {
+                res.status(400).json({
+                    error: "Bonus can only be granted for assetTypeId 3 (Loyalty Points)",
                     code: "VALIDATION",
                 });
                 return;
