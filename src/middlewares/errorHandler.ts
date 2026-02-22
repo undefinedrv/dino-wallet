@@ -9,6 +9,7 @@ const ERROR_STATUS_MAP: Record<string, number> = {
     INSUFFICIENT_SYSTEM_BALANCE: 422,
     NOT_FOUND: 404,
     VALIDATION: 400,
+    UNAUTHORIZED: 401,
 };
 
 export function errorHandler(

@@ -25,26 +25,31 @@ class AppError extends Error {
     }
 }
 
+interface TransactionResult {
+    transaction: Transaction;
+    message?: string;
+}
+
 export class WalletService {
     /**
      * TOPUP: External payment → User wallet ↑, System wallet ↑
      * Both increase because new credits are entering the system.
      */
-    async topUp(input: TransactionInput): Promise<Transaction> {
+    async topUp(input: TransactionInput): Promise<TransactionResult> {
         return this.executeTransaction(input, TransactionType.TOPUP);
     }
 
     /**
      * BONUS: System gives free credits → User wallet ↑, System wallet ↓
      */
-    async bonus(input: TransactionInput): Promise<Transaction> {
+    async bonus(input: TransactionInput): Promise<TransactionResult> {
         return this.executeTransaction(input, TransactionType.BONUS);
     }
 
     /**
      * SPEND: User buys something in-app → User wallet ↓, System wallet ↑
      */
-    async spend(input: TransactionInput): Promise<Transaction> {
+    async spend(input: TransactionInput): Promise<TransactionResult> {
         return this.executeTransaction(input, TransactionType.SPEND);
     }
 
@@ -64,6 +69,13 @@ export class WalletService {
             where: { userId },
             relations: ["assetType"],
         });
+
+        if (wallets.length === 0) {
+            throw new AppError(
+                "UNAUTHORIZED User: Wallet not found",
+                "UNAUTHORIZED"
+            );
+        }
 
         return wallets.map((w) => ({
             walletId: w.id,
@@ -127,7 +139,7 @@ export class WalletService {
     private async executeTransaction(
         input: TransactionInput,
         type: TransactionType
-    ): Promise<Transaction> {
+    ): Promise<TransactionResult> {
         const { userId, assetTypeId, amount, idempotencyKey, description } =
             input;
 
@@ -138,7 +150,11 @@ export class WalletService {
                 relations: ["ledgerEntries"],
             });
             if (existingTx) {
-                return existingTx;
+                return {
+                    transaction: existingTx,
+                    message:
+                        "This request already exists in our database. Returning existing transaction.",
+                };
             }
 
             // ── Step 2: Find wallets ──
@@ -294,7 +310,26 @@ export class WalletService {
             }
 
             savedTx.ledgerEntries = await manager.save(LedgerEntry, entries);
-            return savedTx;
+
+            // ── Step 8: Prepare success message ──
+            let successMessage: string;
+            const assetName = userWallet.assetType.name;
+
+            switch (type) {
+                case TransactionType.TOPUP:
+                    successMessage = `Your top-up of ${amount} ${assetName} is completed successfully.`;
+                    break;
+                case TransactionType.BONUS:
+                    successMessage = `Bonus of ${amount} ${assetName} added successfully for the user ${userId} as ${description || "Welcome Bonus"}.`;
+                    break;
+                case TransactionType.SPEND:
+                    successMessage = `Your purchase is completed of ${amount} for ${description || "Item"}.`;
+                    break;
+                default:
+                    successMessage = "Transaction completed successfully.";
+            }
+
+            return { transaction: savedTx, message: successMessage };
         });
     }
 }

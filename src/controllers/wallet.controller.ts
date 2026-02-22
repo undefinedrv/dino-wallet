@@ -22,6 +22,14 @@ export class WalletController {
                 return;
             }
 
+            if (assetTypeId.toString() === "3") {
+                res.status(400).json({
+                    error: "Users cannot top up Loyalty Points",
+                    code: "VALIDATION",
+                });
+                return;
+            }
+
             if (!Number.isInteger(amount) || amount <= 0) {
                 res.status(400).json({
                     error: "amount must be a positive integer",
@@ -30,7 +38,7 @@ export class WalletController {
                 return;
             }
 
-            const transaction = await walletService.topUp({
+            const result = await walletService.topUp({
                 userId,
                 assetTypeId,
                 amount,
@@ -38,7 +46,7 @@ export class WalletController {
                 description,
             });
 
-            res.status(200).json(transaction);
+            res.status(200).json(result);
         } catch (error) {
             next(error);
         }
@@ -90,7 +98,7 @@ export class WalletController {
                 return;
             }
 
-            const transaction = await walletService.bonus({
+            const result = await walletService.bonus({
                 userId,
                 assetTypeId,
                 amount,
@@ -98,7 +106,7 @@ export class WalletController {
                 description,
             });
 
-            res.status(200).json(transaction);
+            res.status(200).json(result);
         } catch (error) {
             next(error);
         }
@@ -130,7 +138,7 @@ export class WalletController {
                 return;
             }
 
-            const transaction = await walletService.spend({
+            const result = await walletService.spend({
                 userId,
                 assetTypeId,
                 amount,
@@ -138,7 +146,7 @@ export class WalletController {
                 description,
             });
 
-            res.status(200).json(transaction);
+            res.status(200).json(result);
         } catch (error: any) {
             if (error.code === "INSUFFICIENT_BALANCE") {
                 res.status(422).json({
